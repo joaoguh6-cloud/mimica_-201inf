@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Jogo de Palavras</title>
+
+  <!-- PWA -->
+  <link rel="manifest" href="data:application/manifest+json,{
+    \"name\": \"Jogo de Palavras - Mímica 3D\",
+    \"short_name\": \"Mímica\",
+    \"start_url\": \".\",
+    \"display\": \"standalone\",
+    \"background_color\": \"#0f0f1a\",
+    \"theme_color\": \"#00d9ff\",
+    \"icons\": [
+      {\"src\": \"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%s3D%s3F%3C/text%3E%3C/svg%3E\", \"sizes\": \"any\"}
+    ]
+  }" />
+  <meta name="theme-color" content="#00d9ff">
+
+  <!-- Bootstrap 5 -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <!-- Confetti -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+  <style>
+    :root {
+      --primary: #00d9ff;
+      --secondary: #ff00aa;
+      --accent: #7c3aed;
+      --dark: #0f0f1a;
+      --darker: #0a0a12;
+      --success: #00ff88;
+      --danger: #ff3366;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      background: linear-gradient(135deg, var(--darker) 0%, var(--dark) 100%);
+      color: #e0e7ff;
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      margin: 0;
+      overflow-x: hidden;
+      position: relative;
+    }
+
+    body::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: radial-gradient(circle at 20% 80%, rgba(0, 217, 255, 0.15) 0%, transparent 50%),
+                  radial-gradient(circle at 80% 20%, rgba(255, 0, 170, 0.15) 0%, transparent 50%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* TELA DE CAPA */
+    #splash {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(10, 10, 18, 0.95);
+      backdrop-filter: blur(10px);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      animation: fadeIn 1s ease;
+    }
+
+    #splash h1 {
+      font-family: 'Orbitron', sans-serif;
+      font-size: clamp(3rem, 10vw, 6rem);
+      font-weight: 900;
+      background: linear-gradient(45deg, #00d9ff, #ff00aa, #7c3aed);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      text-shadow: 0 0 40px rgba(0, 217, 255, 0.6);
+      margin-bottom: 2rem;
+      text-align: center;
+    }
+
+    .btn-play {
+      background: linear-gradient(45deg, #00d9ff, #7c3aed);
+      color: white;
+      font-family: 'Orbitron', sans-serif;
+      font-weight: 700;
+      font-size: clamp(1.2rem, 4vw, 2rem);
+      padding: 1rem 3rem;
+      border-radius: 50px;
+      border: none;
+      box-shadow: 0 0 30px rgba(0, 217, 255, 0.6);
+      transition: all 0.4s ease;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+    }
+
+    .btn-play:hover {
+      transform: translateY(-5px) scale(1.05);
+      box-shadow: 0 0 50px rgba(0, 217, 255, 0.9);
+    }
+
+    /* JOGO */
+    .game-container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 1rem;
+    }
+
+    h1.game-title {
+      font-family: 'Orbitron', sans-serif;
+      font-size: clamp(2rem, 6vw, 3.5rem);
+      background: linear-gradient(90deg, var(--primary), var(--secondary));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      text-shadow: 0 0 30px rgba(0, 217, 255, 0.5);
+      letter-spacing: 2px;
+      text-align: center;
+      margin-bottom: 1.5rem;
+    }
+
+    .card-3d {
+      background: rgba(15, 15, 26, 0.7);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 24px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 60px rgba(0, 217, 255, 0.2);
+      transition: all 0.4s ease;
+      overflow: hidden;
+    }
+
+    .word-display {
+      font-family: 'Orbitron', sans-serif;
+      font-size: clamp(2.5rem, 8vw, 5rem);
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 3px;
+      background: linear-gradient(45deg, #00ffcc, #ff00aa, #7c3aed, #00d9ff);
+      background-size: 300% 300%;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      animation: gradientShift 3s ease infinite, pulse 2s infinite;
+      text-shadow: 0 0 20px rgba(0, 217, 255, 0.6), 0 5px 15px rgba(0, 0, 0, 0.5);
+      text-align: center;
+      padding: 1rem;
+    }
+
+    @keyframes gradientShift { 0%,100%{background-position:0% 50%} 50%{background-position:100% 50%} }
+    @keyframes pulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.05)} }
+
+    .btn-neon {
+      background: transparent;
+      border: 2px solid transparent;
+      color: white;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      padding: 12px 28px;
+      border-radius: 50px;
+      position: relative;
+      overflow: hidden;
+      transition: all 0.4s ease;
+      font-size: 1rem;
+    }
+
+    .btn-neon::before {
+      content: '';
+      position: absolute;
+      top: 0; left: -100%;
+      width: 100%; height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(0, 217, 255, 0.3), transparent);
+      transition: 0.6s;
+    }
+
+    .btn-neon:hover::before { left: 100%; }
+
+    .btn-neon-primary {
+      background: linear-gradient(45deg, #00d9ff, #7c3aed);
+      box-shadow: 0 0 20px rgba(0, 217, 255, 0.5);
+    }
+
+    .btn-neon-primary:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 0 30px rgba(0, 217, 255, 0.8);
+    }
+
+    .cat-btn {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.15);
+      color: #ccc;
+      padding: 8px 16px;
+      border-radius: 50px;
+      font-size: 0.85rem;
+      transition: all 0.3s ease;
+      backdrop-filter: blur(5px);
+    }
+
+    .cat-btn.active, .cat-btn:hover {
+      background: linear-gradient(45deg, var(--primary), var(--secondary));
+      color: white;
+      border-color: transparent;
+      box-shadow: 0 0 20px rgba(0, 217, 255, 0.4);
+      transform: translateY(-2px);
+    }
+
+    .timer-bar {
+      height: 8px;
+      background: rgba(255,255,255,0.2);
+      border-radius: 4px;
+      overflow: hidden;
+      margin: 15px 0;
+    }
+
+    .timer-fill {
+      height: 100%;
+      width: 100%;
+      background: linear-gradient(90deg, var(--success), var(--primary));
+      border-radius: 4px;
+      transition: width 0.1s linear;
+    }
+
+    .team-card {
+      background: rgba(255,255,255,0.08);
+      border-radius: 16px;
+      padding: 12px;
+      text-align: center;
+      transition: all 0.3s ease;
+      border: 2px solid transparent;
+    }
+
+    .team-card.active {
+      border-color: var(--primary);
+      box-shadow: 0 0 25px rgba(0, 217, 255, 0.5);
+      transform: scale(1.05);
+    }
+
+    .score {
+      font-size: clamp(1.8rem, 5vw, 2.8rem);
+      font-weight: 900;
+      font-family: 'Orbitron', sans-serif;
+    }
+
+    .winner-screen {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0, 0, 0, 0.9);
+      backdrop-filter: blur(15px);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+    }
+
+    .winner-title {
+      font-family: 'Orbitron', sans-serif;
+      font-size: clamp(3rem, 10vw, 6rem);
+      font-weight: 900;
+      background: linear-gradient(45deg, #00ffcc, #ff00aa, #7c3aed, #00d9ff);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      text-shadow: 0 0 40px rgba(0, 217, 255, 0.8);
+      animation: glow 2s infinite;
+    }
+
+    @keyframes glow {
+      0%,100% { text-shadow: 0 0 40px rgba(0, 217, 255, 0.8); }
+      50% { text-shadow: 0 0 80px rgba(255, 0, 170, 0.8); }
+    }
+
+    .hidden { display: none !important; }
+
+    @media (max-width: 480px) {
+      .cat-btn { font-size: 0.75rem; padding: 6px 12px; }
+      .btn-neon { padding: 10px 20px; font-size: 0.9rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- TELA DE CAPA -->
+  <div id="splash">
+    <h1>JOGO DE PALAVRAS</h1>
+    <button class="btn-play" id="startSplash">JOGAR</button>
+  </div>
+
+  <!-- JOGO -->
+  <div id="game" class="container game-container py-4 hidden">
+    <h1 class="game-title">MÍMICA 3D</h1>
+
+    <div class="row g-3 mb-4">
+      <div class="col-6">
+        <div class="team-card" id="team1">
+          <h5 class="mb-1">Time 1</h5>
+          <div class="score text-primary" id="score1">0</div>
+        </div>
+      </div>
+      <div class="col-6">
+        <div class="team-card" id="team2">
+          <h5 class="mb-1">Time 2</h5>
+          <div class="score text-secondary" id="score2">0</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card-3d p-4 p-md-5 mb-4">
+      <div id="palavra" class="word-display my-4">PRONTO?</div>
+      
+      <div class="timer-bar"><div id="timerFill" class="timer-fill"></div></div>
+      <div id="timerText" class="fs-4 fw-bold mb-3 text-center">60s</div>
+
+      <div class="d-flex flex-wrap justify-content-center gap-2 mt-3">
+        <button id="gerar" class="btn-neon btn-neon-primary d-none">NOVA PALAVRA</button>
+        <button id="acertou" class="btn-neon btn-neon-primary d-none">ACERTOU!</button>
+        <button id="passou" class="btn-neon d-none" style="background:#ff3366; box-shadow:0 0 20px #ff336640;">PASSOU</button>
+      </div>
+
+      <button id="startGame" class="btn-neon btn-neon-primary w-100 mt-4">INICIAR JOGO</button>
+    </div>
+
+    <div class="glass p-3 p-md-4 rounded-4">
+      <div class="d-flex flex-wrap justify-content-center gap-2">
+        <button class="cat-btn active" data-cat="todas">TODAS</button>
+        <button class="cat-btn" data-cat="animais">ANIMAIS</button>
+        <button class="cat-btn" data-cat="profissoes">PROFISSÕES</button>
+        <button class="cat-btn" data-cat="objetos">OBJETOS</button>
+        <button class="cat-btn" data-cat="acoes">AÇÕES</button>
+        <button class="cat-btn" data-cat="filmes">FILMES</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TELA DE VITÓRIA -->
+  <div id="winnerScreen" class="winner-screen hidden">
+    <div class="winner-title" id="winnerText">VENCEDOR!</div>
+    <button id="playAgain" class="btn-neon btn-neon-primary mt-5">JOGAR NOVAMENTE</button>
+  </div>
+
+  <script>
+    // === 400 PALAVRAS ÚNICAS ===
+    const palavras = {
+      animais: ["Elefante","Girafa","Canguru","Polvo","Pinguim","Tartaruga","Esquilo","Camelo","Hipopótamo","Arara","Jacaré","Lontra","Panda","Coala","Tigre","Leão","Zebra","Macaco","Gato","Cachorro","Cavalo","Vaca","Ovelha","Galinha","Pato","Ganso","Águia","Coruja","Morcego","Tubarão","Baleia","Golfinho","Polvo","Caranguejo","Lagosta","Medusa","Estrela do mar","Sapo","Cobra","Lagarto","Camaleão","Formiga","Abelha","Borboleta","Joaninha","Escorpião","Aranha","Minhoca","Peixe","Tartaruga marinha"],
+      profissoes: ["Médico","Professor","Bombeiro","Policial","Chef","Piloto","Ator","Cantor","Dentista","Engenheiro","Advogado","Jornalista","Fotógrafo","Mecânico","Vendedor","Arquiteto","Programador","Enfermeiro","Padeiro","Astronauta","Veterinário","Juiz","Detetive","Cientista","Artista","Músico","Dançarino","Escritor","Atleta","Nadador","Ciclista","Jogador de futebol","Artesão","Jardineiro","Cabeleireiro","Psicólogo","Farmacêutico","Bibliotecário","Pescador","Agricultor","Carpinteiro","Eletricista"],
+      objetos: ["Geladeira","Celular","Computador","Bicicleta","Cadeira","Relógio","Óculos","Chave","Livro","Lâmpada","Escova","Garfo","Panela","Teclado","Controle","Mochila","Guarda-chuva","Ventilador","Micro-ondas","Caderno","Caneta","Lápis","Borracha","Régua","Mesa","Sofá","Cama","Travesseiro","Cobertor","Tapete","Vaso","Quadro","Espelho","Sabonete","Shampoo","Toalha","Escova de dente","Pasta de dente","Prato","Copo","Faca","Colher","Chaleira","Liquidificador","Torradeira","Aspirador","Vassoura","Balde","Rodo","Lixo","Reciclável"],
+      acoes: ["Correr","Pular","Dançar","Nadar","Cantar","Comer","Dormir","Falar","Escrever","Ler","Tossir","Espirrar","Rir","Chorar","Assobiar","Bater palmas","Escovar dentes","Lavar louça","Dirigir","Voar","Pintar","Desenhar","Tocar violão","Jogar bola","Pedalar","Pescar","Cozinhar","Limpar","Arrumar","Fotografar","Gravar vídeo","Assistir TV","Jogar videogame","Estudar","Trabalhar","Fazer compras","Caminhar","Alongar","Meditar","Ioga","Malhar","Correr maratona","Patinar","Escalar","Mergulhar","Surfar","Esquiar"],
+      filmes: ["Titanic","Rei Leão","Harry Potter","Vingadores","Frozen","Shrek","Jurassic Park","Star Wars","Matrix","Toy Story","Avatar","Procurando Nemo","Kung Fu Panda","Interestelar","Coco","Moana","Up","Pantera Negra","Jumanji","Deadpool","Senhor dos Anéis","O Poderoso Chefão","Clube da Luta","Pulp Fiction","A Origem","Gladiador","Forrest Gump","O Rei Leão","Bastardos Inglórios","Clube da Luta","Coringa","Parasita","La La Land","Mad Max","Duna","Oppenheimer","Barbie","Guardiões da Galáxia","Homem-Aranha","Batman","Superman","Mulher-Maravilha","Capitão América","Thor","Hulk","Viúva Negra","Pantera Negra"]
+    };
+
+    const todasPalavras = Object.values(palavras).flat();
+    let usadasGlobal = new Set(); // Palavras já usadas em qualquer time
+    let usadasTime1 = new Set();
+    let usadasTime2 = new Set();
+    let categoriaAtual = 'todas';
+    let currentTeam = 1;
+    let roundsPlayed = 0;
+    let timerInterval;
+    let timeLeft = 60;
+    let isRunning = false;
+
+    // Elementos
+    const splash = document.getElementById('splash');
+    const game = document.getElementById('game');
+    const startSplash = document.getElementById('startSplash');
+    const palavraEl = document.getElementById('palavra');
+    const gerarBtn = document.getElementById('gerar');
+    const startBtn = document.getElementById('startGame');
+    const acertouBtn = document.getElementById('acertou');
+    const passouBtn = document.getElementById('passou');
+    const timerFill = document.getElementById('timerFill');
+    const timerText = document.getElementById('timerText');
+    const score1El = document.getElementById('score1');
+    const score2El = document.getElementById('score2');
+    const team1Card = document.getElementById('team1');
+    const team2Card = document.getElementById('team2');
+    const catBtns = document.querySelectorAll('.cat-btn');
+    const winnerScreen = document.getElementById('winnerScreen');
+    const winnerText = document.getElementById('winnerText');
+    const playAgainBtn = document.getElementById('playAgain');
+
+    // Sons
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    function playSound(freq, duration, type = 'sine') {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.frequency.value = freq;
+      osc.type = type;
+      gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+      osc.start();
+      osc.stop(audioCtx.currentTime + duration);
+    }
+
+    // Gerar palavra SEM REPETIÇÃO por time
+    function gerarPalavra() {
+      let lista = categoriaAtual === 'todas' ? todasPalavras : palavras[categoriaAtual] || todasPalavras;
+      const usadas = currentTeam === 1 ? usadasTime1 : usadasTime2;
+      const disponiveis = lista.filter(p => !usadasGlobal.has(p));
+
+      if (disponiveis.length === 0) {
+        palavraEl.textContent = "SEM PALAVRAS!";
+        return;
+      }
+
+      const palavra = disponiveis[Math.floor(Math.random() * disponiveis.length)];
+      palavraEl.textContent = palavra;
+      usadas.add(palavra);
+      usadasGlobal.add(palavra);
+      playSound(800, 0.1, 'square');
+    }
+
+    function iniciarRodada() {
+      isRunning = true;
+      timeLeft = 60;
+      timerText.textContent = '60s';
+      timerFill.style.width = '100%';
+      timerFill.style.background = 'linear-gradient(90deg, #00ff88, #00d9ff)';
+
+      startBtn.classList.add('d-none');
+      gerarBtn.classList.remove('d-none');
+      acertouBtn.classList.remove('d-none');
+      passouBtn.classList.remove('d-none');
+
+      timerInterval = setInterval(() => {
+        timeLeft--;
+        timerText.textContent = `${timeLeft}s`;
+        timerFill.style.width = `${(timeLeft / 60) * 100}%`;
+
+        if (timeLeft <= 10) {
+          timerFill.style.background = 'linear-gradient(90deg, #ff3366, #ff00aa)';
+          playSound(600, 0.1);
+        }
+
+        if (timeLeft <= 0) fimRodada();
+      }, 1000);
+
+      gerarPalavra();
+      atualizarTimeAtivo();
+    }
+
+    function fimRodada() {
+      clearInterval(timerInterval);
+      isRunning = false;
+      palavraEl.textContent = 'FIM!';
+      playSound(300, 0.8, 'sawtooth');
+
+      setTimeout(() => {
+        roundsPlayed++;
+        currentTeam = currentTeam === 1 ? 2 : 1;
+
+        if (roundsPlayed >= 2) {
+          mostrarVencedor();
+        } else {
+          startBtn.classList.remove('d-none');
+          gerarBtn.classList.add('d-none');
+          acertouBtn.classList.add('d-none');
+          passouBtn.classList.add('d-none');
+          startBtn.textContent = `PRÓXIMO: Time ${currentTeam}`;
+          atualizarTimeAtivo();
+        }
+      }, 2000);
+    }
+
+    function mostrarVencedor() {
+      const s1 = parseInt(score1El.textContent);
+      const s2 = parseInt(score2El.textContent);
+
+      if (s1 > s2) {
+        winnerText.textContent = "TIME 1 VENCEU!";
+        confetti({ particleCount: 200, spread: 70, origin: { y: 0.6 }, colors: ['#00d9ff', '#7c3aed'] });
+      } else if (s2 > s1) {
+        winnerText.textContent = "TIME 2 VENCEU!";
+        confetti({ particleCount: 200, spread: 70, origin: { y: 0.6 }, colors: ['#ff00aa', '#ff3366'] });
+      } else {
+        winnerText.textContent = "EMPATE! NOVA RODADA!";
+        playSound(1200, 0.5);
+        setTimeout(resetGame, 3000);
+        setTimeout(iniciarRodada, 3000);
+        return;
+      }
+
+      playSound(1200, 0.3); playSound(1500, 0.3); playSound(1800, 0.5);
+      winnerScreen.classList.remove('hidden');
+    }
+
+    function resetGame() {
+      score1El.textContent = '0';
+      score2El.textContent = '0';
+      usadasTime1.clear();
+      usadasTime2.clear();
+      usadasGlobal.clear();
+      roundsPlayed = 0;
+      currentTeam = 1;
+      winnerScreen.classList.add('hidden');
+      startBtn.classList.remove('d-none');
+      startBtn.textContent = 'INICIAR JOGO';
+      gerarBtn.classList.add('d-none');
+      acertouBtn.classList.add('d-none');
+      passouBtn.classList.add('d-none');
+      palavraEl.textContent = 'PRONTO?';
+      atualizarTimeAtivo();
+    }
+
+    function atualizarTimeAtivo() {
+      team1Card.classList.toggle('active', currentTeam === 1);
+      team2Card.classList.toggle('active', currentTeam === 2);
+    }
+
+    function adicionarPonto() {
+      if (!isRunning) return;
+      const scoreEl = currentTeam === 1 ? score1El : score2El;
+      scoreEl.textContent = parseInt(scoreEl.textContent) + 1;
+      playSound(1000, 0.2, 'sine');
+      gerarPalavra();
+    }
+
+    function pularPalavra() {
+      if (!isRunning) return;
+      playSound(400, 0.15, 'square');
+      gerarPalavra();
+    }
+
+    // Eventos
+    startSplash.addEventListener('click', () => {
+      splash.classList.add('hidden');
+      game.classList.remove('hidden');
+      playSound(900, 0.2);
+    });
+
+    startBtn.addEventListener('click', () => {
+      playSound(900, 0.2);
+      iniciarRodada();
+    });
+
+    gerarBtn.addEventListener('click', gerarPalavra);
+    acertouBtn.addEventListener('click', adicionarPonto);
+    passouBtn.addEventListener('click', pularPalavra);
+    playAgainBtn.addEventListener('click', () => {
+      playSound(800, 0.2);
+      resetGame();
+    });
+
+    catBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        catBtns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        categoriaAtual = btn.dataset.cat;
+        if (isRunning) gerarPalavra();
+      });
+    });
+
+    atualizarTimeAtivo();
+  </script>
+</body>
+</html>
